@@ -1,6 +1,14 @@
+/* Author: Lars Schwensen
+ * Project: Synerfree
+ * Date: 28/05/17
+ *
+ * Synerfree allows the use of the mouse & keyboard of the server computer
+ * on the client computer.
+ */
+
 #include "cursorobserver.h"
 
-CursorObserver::CursorObserver(int width, int height, QString ip, int udpPort,bool server):width(width),height(height),ip(ip),udpPort(udpPort),server(server) {
+CursorObserver::CursorObserver(int width, int height, QString ip, int udpPort, QString scrollEvent, bool server):width(width),height(height),ip(ip),udpPort(udpPort),scrollEvent(scrollEvent),server(server) {
     x=400;
     y=400;
     prevX = 0;
@@ -24,12 +32,7 @@ void CursorObserver::handleAsUbuntuServer(void) {
         qDebug() << "Could not bind to port " << udpPort;
         return;
     }
-
-    drivers.append(QSharedPointer<UDPMouseDriver>::create("/dev/input/mouse0",ip,udpPort,1));
-    drivers.append(QSharedPointer<UDPMouseDriver>::create("/dev/input/mouse1",ip,udpPort,1));
-    drivers.append(QSharedPointer<UDPMouseDriver>::create("/dev/input/mouse2",ip,udpPort,1));
-    drivers.append(QSharedPointer<UDPMouseDriver>::create("/dev/input/mouse3",ip,udpPort,1));
-    drivers.append(QSharedPointer<UDPMouseDriver>::create("/dev/input/mouse4",ip,udpPort,1));
+    drivers.append(QSharedPointer<UDPMouseDriver>::create("/dev/input/mice",ip,udpPort,1));
 
     QList<int> indToDel;
     for(int i=0; i<drivers.size(); i++) {
@@ -80,7 +83,7 @@ void CursorObserver::handleAsUbuntuServer(void) {
                 emit virtualModeOn();
                 virtualMode = true;
             }
-            qDebug() << "x: " << x << " y: " << y;
+            //qDebug() << "x: " << x << " y: " << y;
         }
 
         prevX = x;

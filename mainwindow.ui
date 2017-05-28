@@ -7,19 +7,19 @@
     <x>0</x>
     <y>0</y>
     <width>440</width>
-    <height>240</height>
+    <height>270</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
     <width>440</width>
-    <height>240</height>
+    <height>270</height>
    </size>
   </property>
   <property name="maximumSize">
    <size>
     <width>440</width>
-    <height>240</height>
+    <height>270</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -59,7 +59,7 @@
       <property name="maximumSize">
        <size>
         <width>420</width>
-        <height>130</height>
+        <height>170</height>
        </size>
       </property>
       <widget class="QWidget" name="page">
@@ -146,6 +146,29 @@
          <rect>
           <x>200</x>
           <y>90</y>
+          <width>211</width>
+          <height>30</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QLabel" name="label_4">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>130</y>
+          <width>161</width>
+          <height>30</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Scroll event:</string>
+        </property>
+       </widget>
+       <widget class="QComboBox" name="eventComboBox">
+        <property name="geometry">
+         <rect>
+          <x>200</x>
+          <y>130</y>
           <width>211</width>
           <height>30</height>
          </rect>

@@ -1,3 +1,11 @@
+/* Author: Lars Schwensen
+ * Project: Synerfree
+ * Date: 28/05/17
+ *
+ * Synerfree allows the use of the mouse & keyboard of the server computer
+ * on the client computer.
+ */
+
 #include "udpmousedriver.h"
 
 #include <QUdpSocket>
@@ -23,6 +31,9 @@ void UDPMouseDriver::run() {
         case 2:
             receiveAndExecuteMouseInput();
             break;
+        case 3:
+            readAndSendScrollInput();
+
         default:
             break;
     }
@@ -72,8 +83,10 @@ void UDPMouseDriver::readAndSendMouseInput(void) {
     running = true;
     setUp = true;
     setUpTime.wakeAll();
-    while(running && read(inputDescr, &inputEvent, sizeof(struct input_event))) {
+    while(running && read(inputDescr, &inputEvent, sizeof(struct input_event))) {        
         const char *bytes = (char*)&inputEvent;
+
+        qDebug() << (int)bytes[16] << " " << (int)bytes[18] << (int)bytes[15];
         if(virtualMode) {
             udpSocket.writeDatagram(QByteArray::fromRawData(bytes, sizeof(struct input_event)),QHostAddress(ip), udpPort);
 
@@ -87,13 +100,13 @@ void UDPMouseDriver::readAndSendMouseInput(void) {
 }
 
 void UDPMouseDriver::receiveAndExecuteMouseInput(void) {
-    QUdpSocket udpSocket;
+    QUdpSocket udpSocketMove, udpSocketScroll;
     QByteArray datagram;
 
     initRelInputDevice();
 
     datagram.resize(sizeof(struct input_event));
-    if(!udpSocket.bind(udpPort)) {
+    if(!udpSocketMove.bind(udpPort)) {
         qDebug() << "Clould not bind to udpPort!";
         running = false;
         setUp = true;
@@ -105,8 +118,8 @@ void UDPMouseDriver::receiveAndExecuteMouseInput(void) {
     setUp = true;
     setUpTime.wakeAll();
     while(running) {
-        if(udpSocket.hasPendingDatagrams()) {
-            udpSocket.readDatagram(datagram.data(),sizeof(struct input_event));
+        if(udpSocketMove.hasPendingDatagrams()) {
+            udpSocketMove.readDatagram(datagram.data(),sizeof(struct input_event));
 
             evRel[0].value = datagram[1];
             evRel[1].value = -datagram[2];
@@ -121,7 +134,14 @@ void UDPMouseDriver::receiveAndExecuteMouseInput(void) {
             QMutexLocker lock(&mutex);           
             offsetX += (int)datagram[1];
             offsetY += (int)datagram[2];
-        }else{
+        }
+        if(udpSocketScroll.hasPendingDatagrams()) {
+            udpSocketScroll.readDatagram(datagram.data(),sizeof(struct input_event));
+
+            qDebug() << "scroll: " << datagram[20];
+        }
+
+        else{
             QThread::usleep(3);
         }
     }
@@ -174,6 +194,7 @@ void UDPMouseDriver::initRelInputDevice(void) {
     usleep(100000);
 
     memset(evRel, 0, sizeof(evRel));
+    memset(&evScroll,0, sizeof(struct input_event));
     memset(&key, 0, sizeof(struct input_event));
     memset(&evS,0,sizeof(struct input_event));
 
@@ -184,6 +205,9 @@ void UDPMouseDriver::initRelInputDevice(void) {
 
     evRel[1].type = EV_REL;
     evRel[1].code = REL_Y;
+
+    evScroll.type = EV_REL;
+    evScroll.code = REL_WHEEL;
 
     key.type = EV_KEY;
 }
@@ -224,4 +248,44 @@ bool UDPMouseDriver::initAbsInputDevice(void) {
     evAbs[1].code = ABS_Y;
 
     return true;
+}
+
+void UDPMouseDriver::readAndSendScrollInput(void) {
+    QUdpSocket udpSocket;
+
+    if((inputDescr = open(mousePath.toLatin1().data(), O_RDONLY)) == -1) {
+       qDebug() << "No access to path! (" << mousePath << ") Do you have the rights?";
+       running = false;
+       setUp = true;
+       setUpTime.wakeAll();
+       return;
+    }
+
+    running = true;
+    setUp = true;
+    setUpTime.wakeAll();
+
+    while(running && read(inputDescr, &inputEvent, sizeof(struct input_event))) {
+        const char *bytes = (char*)&inputEvent;
+
+        if(virtualMode) {
+            udpSocket.writeDatagram(QByteArray::fromRawData(bytes, sizeof(struct input_event)),QHostAddress(ip), udpPort+1);
+        }
+    }
+}
+
+void UDPMouseDriver::receiveAndExecuteScrollInput(void) {
+    QUdpSocket udpSocket;
+    QByteArray datagram;
+
+    initRelInputDevice();
+
+    datagram.resize(sizeof(struct input_event));
+    if(!udpSocket.bind(udpPort+1)) {
+        qDebug() << "Clould not bind to " <<  (udpPort+1) << "!";
+        running = false;
+        setUp = true;
+        setUpTime.wakeAll();
+        return;
+    }
 }

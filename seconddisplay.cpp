@@ -1,9 +1,17 @@
+/* Author: Lars Schwensen
+ * Project: Synerfree
+ * Date: 28/05/17
+ *
+ * Synerfree allows the use of the mouse & keyboard of the server computer
+ * on the client computer.
+ */
+
 #include "seconddisplay.h"
 
 #include <QTimer>
 
-SecondDisplay::SecondDisplay(QString ip, int udpPort, QWidget *parent) :
-    ip(ip),udpPort(udpPort),QWidget(parent,Qt::Dialog),
+SecondDisplay::SecondDisplay(QString ip, int udpPort, QString scrollEvent, QWidget *parent) :
+    ip(ip),udpPort(udpPort),scrollEvent(scrollEvent),QWidget(parent,Qt::Dialog),
     ui(new Ui::SecondDisplay) {
     ui->setupUi(this);
 
@@ -20,7 +28,7 @@ SecondDisplay::SecondDisplay(QString ip, int udpPort, QWidget *parent) :
     this->move(0,0);
     this->setCursor(Qt::BlankCursor);
 
-    cursorObserver = QSharedPointer<CursorObserver>::create(width,height,ip,udpPort,true);
+    cursorObserver = QSharedPointer<CursorObserver>::create(width,height,ip,udpPort,scrollEvent,true);
 
     connect(cursorObserver.data(),SIGNAL(virtualModeOn()),this,SLOT(virtualModeOn()));
     connect(cursorObserver.data(),SIGNAL(virtualModeOff()),this,SLOT(virtualModeOff()));

@@ -1,3 +1,11 @@
+/* Author: Lars Schwensen
+ * Project: Synerfree
+ * Date: 28/05/17
+ *
+ * Synerfree allows the use of the mouse & keyboard of the server computer
+ * on the client computer.
+ */
+
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
@@ -25,6 +33,8 @@ private:
 
     QSharedPointer<SecondDisplay> secondDisplay;
     QSharedPointer<CursorObserver> mouseMover;
+
+    void displayEvents(void);
 private slots:
     void start(void);
 

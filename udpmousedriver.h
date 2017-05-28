@@ -1,3 +1,11 @@
+/* Author: Lars Schwensen
+ * Project: Synerfree
+ * Date: 28/05/17
+ *
+ * Synerfree allows the use of the mouse & keyboard of the server computer
+ * on the client computer.
+ */
+
 #ifndef UDPMOUSEDRIVER_H
 #define UDPMOUSEDRIVER_H
 
@@ -34,6 +42,10 @@ public:
 
     void setToAbsolutePosition(const int x, const int y);
 
+    void readAndSendScrollInput(void);
+
+    void receiveAndExecuteScrollInput(void);
+
     bool waitForSetup(void);
 
     int service;
@@ -59,7 +71,7 @@ private:
     struct input_event inputEvent;
 
     int fdRel, fdAbs;
-    struct input_event evRel[2],evAbs[2], key, evS;
+    struct input_event evRel[2],evAbs[2], evScroll, key, evS;
 
     bool absInitialized;
 

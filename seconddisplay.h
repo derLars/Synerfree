@@ -1,3 +1,11 @@
+/* Author: Lars Schwensen
+ * Project: Synerfree
+ * Date: 28/05/17
+ *
+ * Synerfree allows the use of the mouse & keyboard of the server computer
+ * on the client computer.
+ */
+
 #ifndef SECONDDISPLAY_H
 #define SECONDDISPLAY_H
 
@@ -18,7 +26,7 @@ class SecondDisplay : public QWidget
     Q_OBJECT
 
 public:
-    explicit SecondDisplay(QString ip, int udpPort, QWidget *parent = 0);
+    explicit SecondDisplay(QString ip, int udpPort, QString scrollEvent, QWidget *parent = 0);
     ~SecondDisplay();
 
     int width;
@@ -30,6 +38,7 @@ private:
 
     QString ip;
     int udpPort;
+    QString scrollEvent;
 
     bool virtualMode;
 
