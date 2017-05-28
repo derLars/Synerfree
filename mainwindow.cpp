@@ -7,6 +7,7 @@
  */
 #include <QDir>
 #include <QDirIterator>
+#include <QClipboard>
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
@@ -78,3 +79,4 @@ void MainWindow::displayEvents(void) {
         }
     }
 }
+

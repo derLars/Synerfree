@@ -33,6 +33,10 @@ public:
     int height;
 
     QSharedPointer<CursorObserver> cursorObserver;
+
+    QClipboard* clipBoard;
+    QString clipBoardContent;
+
 private:
     Ui::SecondDisplay *ui;
 
@@ -42,10 +46,12 @@ private:
 
     bool virtualMode;
 
+signals:
+    void passClipboardContent(QString clipBoardText);
 public slots:
     void virtualModeOn(void);
     void virtualModeOff(void);
-    void fixCursor(void);
+    void fixCursor(void);   
 };
 
 #endif // SECONDDISPLAY_H

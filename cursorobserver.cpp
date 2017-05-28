@@ -33,6 +33,12 @@ void CursorObserver::handleAsUbuntuServer(void) {
         return;
     }
     drivers.append(QSharedPointer<UDPMouseDriver>::create("/dev/input/mice",ip,udpPort,1));
+    drivers.append(QSharedPointer<UDPMouseDriver>::create("/dev/input/event16",ip,udpPort,3));
+    drivers.append(QSharedPointer<UDPMouseDriver>::create("",ip,udpPort,4));
+
+    connect(this,SIGNAL(passClipboardContentSignal(QString)),drivers.last().data(),SLOT(readAndSendClipBoardInput(QString)));
+
+    //drivers.append(QSharedPointer<UDPMouseDriver>::create("",ip,udpPort,4));
 
     QList<int> indToDel;
     for(int i=0; i<drivers.size(); i++) {
@@ -51,6 +57,7 @@ void CursorObserver::handleAsUbuntuServer(void) {
     window = XRootWindow(display.data(),0);
 
     running = true;
+    int heartbeatCountdown = 50;
     while(running && !drivers.isEmpty()) {
         for(int i=0; i<drivers.size(); i++) {
             if(!drivers[i]->running) {
@@ -71,6 +78,8 @@ void CursorObserver::handleAsUbuntuServer(void) {
             if(datagram.at(0) == 0x01) {
                 virtualMode = false;
                 emit virtualModeOff();
+            }else if(datagram.at(0) == 0x03) {
+                heartbeatCountdown = 50;
             }
             datagram.replace(0,1,(const char*)"9");
         }
@@ -89,8 +98,17 @@ void CursorObserver::handleAsUbuntuServer(void) {
         prevX = x;
         prevY = y;
         QThread::msleep(10);
-    }
 
+        if(virtualMode) {
+            heartbeatCountdown--;
+            //qDebug() << heartbeatCountdown;
+            if(heartbeatCountdown < 0) {
+                heartbeatCountdown = 50;
+                virtualMode = false;
+                emit virtualModeOff();
+            }
+        }
+    }
 }
 
 void CursorObserver::handleAsServer(void) {
@@ -170,6 +188,7 @@ void CursorObserver::handleAsArchClient(void) {
     drivers.append(QSharedPointer<UDPMouseDriver>::create("/dev/input/mouse2",ip,udpPort,0));
     drivers.append(QSharedPointer<UDPMouseDriver>::create("/dev/input/mouse3",ip,udpPort,0));
     drivers.append(QSharedPointer<UDPMouseDriver>::create("/dev/input/mouse4",ip,udpPort,0));
+    drivers.append(QSharedPointer<UDPMouseDriver>::create("",ip,udpPort,4));
 
     QList<int> indToDel;
     for(int i=0; i<drivers.size(); i++) {
@@ -230,4 +249,9 @@ void CursorObserver::getAbsCoord(int& x, int& y) {
     unsigned int maskReturn;
 
     XQueryPointer(display.data(), window, &retWindow, &retWindow, &x, &y, &winX, &winY, &maskReturn);
+}
+
+void CursorObserver::passClipboardContentSlot(QString clipBoardText) {
+    //qDebug () << "passing: " << clipBoardText;
+    emit passClipboardContentSignal(clipBoardText);
 }

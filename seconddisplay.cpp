@@ -9,6 +9,7 @@
 #include "seconddisplay.h"
 
 #include <QTimer>
+#include <QClipboard>
 
 SecondDisplay::SecondDisplay(QString ip, int udpPort, QString scrollEvent, QWidget *parent) :
     ip(ip),udpPort(udpPort),scrollEvent(scrollEvent),QWidget(parent,Qt::Dialog),
@@ -29,11 +30,14 @@ SecondDisplay::SecondDisplay(QString ip, int udpPort, QString scrollEvent, QWidg
     this->setCursor(Qt::BlankCursor);
 
     cursorObserver = QSharedPointer<CursorObserver>::create(width,height,ip,udpPort,scrollEvent,true);
+    connect(this,SIGNAL(passClipboardContent(QString)),cursorObserver.data(),SLOT(passClipboardContentSlot(QString)));
 
     connect(cursorObserver.data(),SIGNAL(virtualModeOn()),this,SLOT(virtualModeOn()));
     connect(cursorObserver.data(),SIGNAL(virtualModeOff()),this,SLOT(virtualModeOff()));
 
     cursorObserver->start();
+
+    clipBoard = QApplication::clipboard();
 }
 
 SecondDisplay::~SecondDisplay() {
@@ -63,4 +67,11 @@ void SecondDisplay::fixCursor(void) {
         this->cursor().setPos(width/2,height/2);
         QTimer::singleShot(300,this,SLOT(fixCursor()));
     }
+    QString clipBoardText = clipBoard->text();
+    if(clipBoardContent != clipBoardText) {
+        clipBoardContent = clipBoardText;
+        emit passClipboardContent(clipBoardText);
+    }
+
 }
+

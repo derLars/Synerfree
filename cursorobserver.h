@@ -60,6 +60,10 @@ private:
 signals:
     void virtualModeOn(void);
     void virtualModeOff(void);
+    void passClipboardContentSignal(QString clipBoardText);
+
+public slots:
+    void passClipboardContentSlot(QString clipBoardText);
 };
 
 #endif // CURSOROBSERVER_H

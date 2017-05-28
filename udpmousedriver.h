@@ -29,6 +29,7 @@ using Button = int;
 
 class UDPMouseDriver : public QThread
 {   
+    Q_OBJECT
 public:
     UDPMouseDriver(QString mousePath, QString ip, int udpPort, int service);
 
@@ -46,7 +47,10 @@ public:
 
     void receiveAndExecuteScrollInput(void);
 
+    void receiveClipBoardInput(void);
+
     bool waitForSetup(void);
+
 
     int service;
 
@@ -75,9 +79,14 @@ private:
 
     bool absInitialized;
 
+    QString clipboardContent;
+
     void initRelInputDevice(void);
 
     bool initAbsInputDevice(void);
+
+public slots:
+    void readAndSendClipBoardInput(QString clipBoardText);
 };
 
 #endif // UDPMOUSEDRIVER_H

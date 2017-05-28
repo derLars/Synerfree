@@ -9,8 +9,15 @@
 #include "udpmousedriver.h"
 
 #include <QUdpSocket>
+#include <QTcpSocket>
+#include <QTcpServer>
 
-UDPMouseDriver::UDPMouseDriver(QString mousePath, QString ip, int udpPort, int service):service(service),mousePath(mousePath),ip(ip),udpPort(udpPort) {
+#include <QApplication>
+#include <QClipboard>
+#include <QFileInfo>
+#include <QFile>
+
+UDPMouseDriver::UDPMouseDriver(QString mousePath, QString ip, int udpPort, int service):mousePath(mousePath),ip(ip),udpPort(udpPort),service(service) {
     offsetX = 0;
     offsetY = 0;
 
@@ -33,7 +40,9 @@ void UDPMouseDriver::run() {
             break;
         case 3:
             readAndSendScrollInput();
-
+            break;
+        case 4:
+            receiveClipBoardInput();
         default:
             break;
     }
@@ -71,6 +80,7 @@ void UDPMouseDriver::readMouseOffset(void) {
 
 void UDPMouseDriver::readAndSendMouseInput(void) {
     QUdpSocket udpSocket;
+    auto clipBoard = QApplication::clipboard();
 
     if((inputDescr = open(mousePath.toLatin1().data(), O_RDONLY)) == -1) {
        qDebug() << "No access to path! (" << mousePath << ") Do you have the rights?";
@@ -86,7 +96,7 @@ void UDPMouseDriver::readAndSendMouseInput(void) {
     while(running && read(inputDescr, &inputEvent, sizeof(struct input_event))) {        
         const char *bytes = (char*)&inputEvent;
 
-        qDebug() << (int)bytes[16] << " " << (int)bytes[18] << (int)bytes[15];
+        //qDebug() << (int)bytes[16] << " " << (int)bytes[18] << (int)bytes[15];
         if(virtualMode) {
             udpSocket.writeDatagram(QByteArray::fromRawData(bytes, sizeof(struct input_event)),QHostAddress(ip), udpPort);
 
@@ -267,25 +277,118 @@ void UDPMouseDriver::readAndSendScrollInput(void) {
 
     while(running && read(inputDescr, &inputEvent, sizeof(struct input_event))) {
         const char *bytes = (char*)&inputEvent;
-
-        if(virtualMode) {
+        if(virtualMode && bytes[16] == EV_REL && bytes[18] == REL_WHEEL) {
+            //qDebug() << "scrolling " << (int)bytes[16] << " " << (int)bytes[18] << " " << (int)bytes[20];
             udpSocket.writeDatagram(QByteArray::fromRawData(bytes, sizeof(struct input_event)),QHostAddress(ip), udpPort+1);
         }
     }
 }
 
-void UDPMouseDriver::receiveAndExecuteScrollInput(void) {
-    QUdpSocket udpSocket;
-    QByteArray datagram;
+void UDPMouseDriver::receiveClipBoardInput(void) {
+    QTcpServer tcpServer;
 
-    initRelInputDevice();
-
-    datagram.resize(sizeof(struct input_event));
-    if(!udpSocket.bind(udpPort+1)) {
-        qDebug() << "Clould not bind to " <<  (udpPort+1) << "!";
+    if(!tcpServer.listen(QHostAddress::Any,udpPort+2)) {
         running = false;
         setUp = true;
         setUpTime.wakeAll();
         return;
     }
+
+    running = true;
+    setUp = true;
+    setUpTime.wakeAll();
+    while(running) {
+       if(tcpServer.waitForNewConnection()) {
+           auto client = tcpServer.nextPendingConnection();
+
+           client->waitForReadyRead();
+
+           auto nameSizeBytes = client->read(4);
+           int nameSize = 0;
+
+           nameSize |= ((0xFF & nameSizeBytes[0]) << 24);
+           nameSize |= ((0xFF & nameSizeBytes[1]) << 16);
+           nameSize |= ((0xFF & nameSizeBytes[2]) << 8);
+           nameSize |= (0xFF & nameSizeBytes[2]);
+
+           client->waitForReadyRead();
+
+           auto nameBytes = client->read(nameSize);
+           QString name(nameBytes);
+
+           auto fileSizeBytes = client->read(4);
+           int fileSize = 0;
+
+           fileSize |= ((0xFF & fileSizeBytes[0]) << 24);
+           fileSize |= ((0xFF & fileSizeBytes[1]) << 16);
+           fileSize |= ((0xFF & fileSizeBytes[2]) << 8);
+           fileSize |= (0xFF & fileSizeBytes[2]);
+
+           if(fileSize > 0) {
+               auto fileBytes = client->read(fileSize);
+
+               QFile file("/tmp/" + name);
+               if(file.open(QFile::WriteOnly)) {
+                   file.write(fileBytes);
+                   file.close();
+               }
+           }
+       }
+   }
 }
+
+void UDPMouseDriver::readAndSendClipBoardInput(QString clipBoardText) {
+    QTcpSocket tcpSocket;
+
+    tcpSocket.connectToHost(QHostAddress(ip), udpPort+2);
+    if(!tcpSocket.waitForConnected()) {
+        return;
+    }
+
+    qDebug() << "checking clipboard: " << clipBoardText << " : " << clipboardContent;
+
+    if(clipboardContent != clipBoardText) {
+        clipboardContent = clipBoardText;
+
+        QString name = clipboardContent.split("/").last();
+        QFile file(clipboardContent);
+
+        QByteArray nameSizeBytes;
+        nameSizeBytes.append(0xff & (name.size() >> 24));
+        nameSizeBytes.append(0xff & (name.size() >> 16));
+        nameSizeBytes.append(0xff & (name.size() >> 8));
+        nameSizeBytes.append(0xff & (name.size()));
+        tcpSocket.write(nameSizeBytes);
+
+        QByteArray nameBytes;
+        nameBytes.append(name);
+        tcpSocket.write(nameBytes);
+
+        QByteArray fileSizeBytes;
+        if(QFileInfo(clipboardContent).exists() && file.size() <= 524288 && file.open(QFile::ReadOnly)) {
+            fileSizeBytes.append(0xff & (file.size() >> 24));
+            fileSizeBytes.append(0xff & (file.size() >> 16));
+            fileSizeBytes.append(0xff & (file.size() >> 8));
+            fileSizeBytes.append(0xff & (file.size()));
+
+            tcpSocket.write(fileSizeBytes);
+
+            QByteArray fileBytes;
+            fileBytes.append(file.readAll());
+
+            tcpSocket.write(fileBytes);
+        } else {
+            fileSizeBytes.append((char)0x00);
+            fileSizeBytes.append((char)0x00);
+            fileSizeBytes.append((char)0x00);
+            fileSizeBytes.append((char)0x00);
+
+            tcpSocket.write(fileSizeBytes);
+        }
+
+        qDebug() << "sending: " << name;
+        //udpSocket.writeDatagram(clipBoardBytes,QHostAddress(ip), udpPort+2);
+
+    }
+}
+
