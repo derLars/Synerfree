@@ -76,7 +76,7 @@ void UDPMouseDriver::readMouseOffset(void) {
         offsetX += (int)bytes[1];
         offsetY += (int)bytes[2];
 
-        QThread::usleep(5);
+        QThread::msleep(5);
     }
 }
 
@@ -98,7 +98,6 @@ void UDPMouseDriver::readAndSendMouseInput(void) {
     while(running && read(inputDescr, &inputEvent, sizeof(struct input_event))) {        
         const char *bytes = (char*)&inputEvent;
 
-        //qDebug() << (int)bytes[16] << " " << (int)bytes[18] << (int)bytes[15];
         if(virtualMode) {
             udpSocket.writeDatagram(QByteArray::fromRawData(bytes, sizeof(struct input_event)),QHostAddress(ip), udpPort);
 
@@ -308,34 +307,46 @@ void UDPMouseDriver::receiveClipBoardInput(void) {
     setUp = true;
     setUpTime.wakeAll();
     while(running) {
-       if(tcpServer.waitForNewConnection()) {
+       if(tcpServer.waitForNewConnection(3)) {
+           QByteArray nameSizeBytes, nameBytes;
+           QByteArray fileSizeBytes, fileBytes;
+
+           qDebug() << "receiving clipboard";
            auto client = tcpServer.nextPendingConnection();
 
-           client->waitForReadyRead();
-
-           auto nameSizeBytes = client->read(4);
+           client->waitForReadyRead();        
+           nameSizeBytes.resize(4);
+           client->read(nameSizeBytes.data(), 4);
            int nameSize = 0;
 
            nameSize |= ((0xFF & nameSizeBytes[0]) << 24);
            nameSize |= ((0xFF & nameSizeBytes[1]) << 16);
            nameSize |= ((0xFF & nameSizeBytes[2]) << 8);
-           nameSize |= (0xFF & nameSizeBytes[2]);
+           nameSize |= (0xFF & nameSizeBytes[3]);
 
+           qDebug() << "name size: " << nameSize;
+
+           nameBytes.resize(nameSize);
            client->waitForReadyRead();
 
-           auto nameBytes = client->read(nameSize);
+           client->read(nameBytes.data(),nameSize);
            QString name(nameBytes);
 
-           auto fileSizeBytes = client->read(4);
+           qDebug() << "name: " << name;
+
+           fileSizeBytes.resize(4);
+           client->read(fileSizeBytes.data(), 4);
            int fileSize = 0;
 
            fileSize |= ((0xFF & fileSizeBytes[0]) << 24);
            fileSize |= ((0xFF & fileSizeBytes[1]) << 16);
            fileSize |= ((0xFF & fileSizeBytes[2]) << 8);
-           fileSize |= (0xFF & fileSizeBytes[2]);
+           fileSize |= (0xFF & fileSizeBytes[3]);
 
+           qDebug() << "file size: " << fileSize;
            if(fileSize > 0) {
-               auto fileBytes = client->read(fileSize);
+              fileBytes.resize(fileSize);
+               client->read(fileBytes.data(),fileSize);
 
                QFile file("/tmp/" + name);
                if(file.open(QFile::WriteOnly)) {
@@ -343,6 +354,8 @@ void UDPMouseDriver::receiveClipBoardInput(void) {
                    file.close();
                }
            }
+       } else {
+
        }
    }
 }
