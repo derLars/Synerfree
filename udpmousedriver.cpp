@@ -306,14 +306,11 @@ void UDPMouseDriver::receiveClipBoardInput(void) {
     running = true;
     setUp = true;
     setUpTime.wakeAll();
-    qDebug() << "start with clipboard service";
-
     while(running) {
        if(tcpServer.waitForNewConnection(3)) {
            QByteArray nameSizeBytes, nameBytes;
            QByteArray fileSizeBytes, fileBytes;
 
-           qDebug() << "receiving clipboard";
            auto client = tcpServer.nextPendingConnection();
 
            client->waitForReadyRead();        
@@ -326,15 +323,11 @@ void UDPMouseDriver::receiveClipBoardInput(void) {
            nameSize |= ((0xFF & nameSizeBytes[2]) << 8);
            nameSize |= (0xFF & nameSizeBytes[3]);
 
-           qDebug() << "name size: " << nameSize;
-
            nameBytes.resize(nameSize);
            client->waitForReadyRead();
 
            client->read(nameBytes.data(),nameSize);
            QString name(nameBytes);
-
-           qDebug() << "name: " << name;
 
            fileSizeBytes.resize(4);
            client->read(fileSizeBytes.data(), 4);
@@ -345,7 +338,6 @@ void UDPMouseDriver::receiveClipBoardInput(void) {
            fileSize |= ((0xFF & fileSizeBytes[2]) << 8);
            fileSize |= (0xFF & fileSizeBytes[3]);
 
-           qDebug() << "file size: " << fileSize;
            if(fileSize > 0) {
               fileBytes.resize(fileSize);
                client->read(fileBytes.data(),fileSize);
@@ -356,6 +348,7 @@ void UDPMouseDriver::receiveClipBoardInput(void) {
                    file.close();
                }
            }
+           emit clipboardContentReceived(name);
        }else if(newClipboardContent != clipboardContent) {
            readAndSendClipBoardInput();
        }
@@ -371,12 +364,11 @@ void UDPMouseDriver::readAndSendClipBoardInput(void) {
         return;
     }
 
-    qDebug() << "checking clipboard: " << newClipboardContent << " : " << clipboardContent;
-
     if(clipboardContent != newClipboardContent) {
         clipboardContent = newClipboardContent;
 
         QString name = clipboardContent.split("/").last();
+
         QFile file(clipboardContent);
 
         QByteArray nameSizeBytes;
@@ -418,10 +410,6 @@ void UDPMouseDriver::readAndSendClipBoardInput(void) {
             tcpSocket.write(fileSizeBytes);
             tcpSocket.waitForBytesWritten(1000);
         }
-
-        qDebug() << "sending: " << name;
-        //udpSocket.writeDatagram(clipBoardBytes,QHostAddress(ip), udpPort+2);
-
     }
 }
 

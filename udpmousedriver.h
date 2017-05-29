@@ -88,6 +88,9 @@ private:
     bool initAbsInputDevice(void);
 
     void readAndSendClipBoardInput(void);
+
+signals:
+    void clipboardContentReceived(QString);
 };
 
 #endif // UDPMOUSEDRIVER_H

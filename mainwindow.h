@@ -40,6 +40,7 @@ private slots:
 
 public slots:
     void stop(void);
+    void receiveClipboardContent(QString clipBoardText);
 };
 
 #endif // MAINWINDOW_H

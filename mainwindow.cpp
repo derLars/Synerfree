@@ -47,6 +47,8 @@ void MainWindow::start(void) {
         QRect rec = QApplication::desktop()->screenGeometry();
 
         mouseMover = QSharedPointer<CursorObserver>::create(rec.width(),rec.height(),ip,port,scrollEvent,false);
+        connect(mouseMover.data(),SIGNAL(passReceivedClipboardContentSignal(QString)),this,SLOT(receiveClipboardContent(QString)));
+
         mouseMover->start();
     } else {
         secondDisplay = QSharedPointer<SecondDisplay>::create(ip,port,scrollEvent);
@@ -80,3 +82,8 @@ void MainWindow::displayEvents(void) {
     }
 }
 
+void MainWindow::receiveClipboardContent(QString clipBoardText) {
+    QClipboard* clipboard = QApplication::clipboard();
+
+    clipboard->setText(clipBoardText);
+}

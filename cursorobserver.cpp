@@ -185,7 +185,9 @@ void CursorObserver::handleAsArchClient(void) {
     drivers.append(QSharedPointer<UDPMouseDriver>::create("/dev/input/mouse2",ip,udpPort,0));
     drivers.append(QSharedPointer<UDPMouseDriver>::create("/dev/input/mouse3",ip,udpPort,0));
     drivers.append(QSharedPointer<UDPMouseDriver>::create("/dev/input/mouse4",ip,udpPort,0));
+
     drivers.append(QSharedPointer<UDPMouseDriver>::create("",ip,udpPort,4));
+    connect(drivers.last().data(),SIGNAL(clipboardContentReceived(QString)),this,SLOT(passReceivedClipboardContentSlot(QString)));
 
     QList<int> indToDel;
     for(int i=0; i<drivers.size(); i++) {
@@ -258,4 +260,8 @@ void CursorObserver::getAbsCoord(int& x, int& y) {
 void CursorObserver::passClipboardContentSlot(QString clipBoardText) {
     qDebug () << "passing: " << clipBoardText;
     drivers.last()->newClipboardContent = clipBoardText;
+}
+
+void CursorObserver::passReceivedClipboardContentSlot(QString clipboardText) {
+    emit passReceivedClipboardContentSignal(clipboardText);
 }
