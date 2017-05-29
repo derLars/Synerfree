@@ -36,10 +36,6 @@ void CursorObserver::handleAsUbuntuServer(void) {
     drivers.append(QSharedPointer<UDPMouseDriver>::create("/dev/input/event16",ip,udpPort,3));
     drivers.append(QSharedPointer<UDPMouseDriver>::create("",ip,udpPort,4));
 
-    connect(this,SIGNAL(passClipboardContentSignal(QString)),drivers.last().data(),SLOT(readAndSendClipBoardInput(QString)));
-
-    //drivers.append(QSharedPointer<UDPMouseDriver>::create("",ip,udpPort,4));
-
     QList<int> indToDel;
     for(int i=0; i<drivers.size(); i++) {
         drivers[i]->start();
@@ -260,6 +256,6 @@ void CursorObserver::getAbsCoord(int& x, int& y) {
 }
 
 void CursorObserver::passClipboardContentSlot(QString clipBoardText) {
-    //qDebug () << "passing: " << clipBoardText;
-    emit passClipboardContentSignal(clipBoardText);
+    qDebug () << "passing: " << clipBoardText;
+    drivers.last()->newClipboardContent = clipBoardText;
 }

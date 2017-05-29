@@ -65,6 +65,8 @@ public:
 
     int offsetX;
     int offsetY;
+
+    QString newClipboardContent;
 private:
     QString mousePath;
 
@@ -85,8 +87,7 @@ private:
 
     bool initAbsInputDevice(void);
 
-public slots:
-    void readAndSendClipBoardInput(QString clipBoardText);
+    void readAndSendClipBoardInput(void);
 };
 
 #endif // UDPMOUSEDRIVER_H
