@@ -178,9 +178,10 @@ void CursorObserver::handleAsServer(void) {
 
 void CursorObserver::handleAsArchClient(void) {
     QUdpSocket udpSocket;
-    QByteArray left,right;
+    QByteArray left,right,heartbeat;
     left.append(0x01);
     right.append(0x02);
+    heartbeat.append(0x03);
 
     drivers.append(QSharedPointer<UDPMouseDriver>::create("",ip,udpPort,2));
     drivers.append(QSharedPointer<UDPMouseDriver>::create("/dev/input/mouse0",ip,udpPort,0));
@@ -205,6 +206,7 @@ void CursorObserver::handleAsArchClient(void) {
 
     running = true;
     drivers.last()->setToAbsolutePosition(x,y);
+    int heartbeatCounter = 0;
     while(running && !drivers.isEmpty()) {
         for(int i=0; i<drivers.size(); i++) {
             if(!drivers[i]->running) {
@@ -227,7 +229,7 @@ void CursorObserver::handleAsArchClient(void) {
         }
         drivers.last()->setToAbsolutePosition(x,y);
         if(prevX != x || prevY != y) {
-            qDebug() << "x: " << x << " y: " << y;
+            //qDebug() << "x: " << x << " y: " << y;
 
             if(x < 0) {
                 udpSocket.writeDatagram(left, 1,QHostAddress(ip), udpPort);
@@ -241,6 +243,12 @@ void CursorObserver::handleAsArchClient(void) {
         prevX = x;
         prevY = y;
         QThread::msleep(10);
+        heartbeatCounter++;
+        //qDebug() << heartbeatCounter;
+        if(heartbeatCounter > 30) {
+            heartbeatCounter = 0;
+            udpSocket.writeDatagram(heartbeat, 1,QHostAddress(ip), udpPort);
+        }
     }
 }
 

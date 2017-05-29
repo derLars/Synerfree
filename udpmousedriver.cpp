@@ -75,6 +75,8 @@ void UDPMouseDriver::readMouseOffset(void) {
         QMutexLocker lock(&mutex);
         offsetX += (int)bytes[1];
         offsetY += (int)bytes[2];
+
+        QThread::usleep(5);
     }
 }
 
@@ -124,6 +126,14 @@ void UDPMouseDriver::receiveAndExecuteMouseInput(void) {
         return;
     }
 
+    if(!udpSocketScroll.bind(udpPort+1)) {
+        qDebug() << "Clould not bind to udpPort!";
+        running = false;
+        setUp = true;
+        setUpTime.wakeAll();
+        return;
+    }
+
     running = true;
     setUp = true;
     setUpTime.wakeAll();
@@ -148,12 +158,11 @@ void UDPMouseDriver::receiveAndExecuteMouseInput(void) {
         if(udpSocketScroll.hasPendingDatagrams()) {
             udpSocketScroll.readDatagram(datagram.data(),sizeof(struct input_event));
 
-            qDebug() << "scroll: " << datagram[20];
+            evScroll.value = datagram[20];
+            write(fdRel, &evScroll, sizeof(evScroll));
+            write(fdRel, &evS, sizeof(struct input_event));
         }
-
-        else{
-            QThread::usleep(3);
-        }
+        QThread::usleep(5);
     }
     close(fdRel);
 }
@@ -186,6 +195,7 @@ void UDPMouseDriver::initRelInputDevice(void) {
     ioctl(fdRel, UI_SET_EVBIT, EV_REL);
     ioctl(fdRel, UI_SET_RELBIT, REL_X);
     ioctl(fdRel, UI_SET_RELBIT, REL_Y);
+    ioctl(fdRel, UI_SET_RELBIT, REL_WHEEL);
 
     struct uinput_user_dev uidev;
     memset(&uidev,0,sizeof(uidev));
